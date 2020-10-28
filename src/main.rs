@@ -33,7 +33,7 @@ fn main() -> std::io::Result<()> {
             .long("ref")
             .value_name("FILE")
             .required(true)
-            .help("The reference we've will align to")
+            .help("The reference we've align our reads to, can have multiple contigs")
             .takes_value(true))
         .arg(Arg::with_name("output")
             .short("o")
@@ -45,7 +45,7 @@ fn main() -> std::io::Result<()> {
         .arg(Arg::with_name("full_reference")
             .short("f")
             .long("full_reference")
-            .help("should we try to output the full reference in the FASTA (use only for amplicons / short ref. sequences)"))
+            .help("should we try to output the full alignment, i.e. the gaps in the read from the beginning of the contig to the end"))
         .get_matches();
 
     // pull out the command line arguments and setup our ref, input, and output
@@ -85,7 +85,7 @@ fn main() -> std::io::Result<()> {
     match input_file {
         _x if _x.ends_with(".bam") || _x.ends_with(".BAM") => {
             let reader = File::open(_x).map(bam::Reader::new)?;
-            panic!("We BAAAAAAM expect a file ending with .sam or .bam as input, we saw: {} ", input_file)
+            panic!("We expect a file ending with .sam or .bam as input, we saw: {} ", input_file)
         }
         _x if _x.ends_with(".sam") || _x.ends_with(".SAM") => {
             let mut reader = File::open(_x).map(BufReader::new).map(sam::Reader::new)?;
@@ -117,35 +117,25 @@ fn main() -> std::io::Result<()> {
 
                                 let mut current_ref_pos = position - 1;
                                 let mut current_read_pos = 0;
-                                //println!("CIGAR = {}, positions = {} (ref) {} (read)", cigar,current_ref_pos,current_read_pos);
                                 for op in cigar.iter() {
-                                    //println!("OP = {}, positions = {} (ref) {} (read)", op,current_ref_pos,current_read_pos);
                                     match op.kind() {
                                         Kind::Match => {
-                                            //println!("MATCH");
                                             let length: usize = op.len() as usize;
                                             let ref_seq = String::from_utf8(reference_sequence[current_ref_pos..(current_ref_pos + length)].to_vec());
-                                            //println!("LENGTH = {}",length);
                                             reference_builder.append(ref_seq.unwrap());
                                             current_ref_pos += length;
                                             let read_seq = sequence[current_read_pos..(current_read_pos + length)].iter().map(|c| char::from(*c)).collect::<String>();
                                             read_builder.append(read_seq);
                                             current_read_pos += length;
                                         }
-                                        /// An insertion into the reference (`I`).
                                         Kind::Insertion => {//Kind::Insertion => {
-                                            //println!("INSERT");
                                             let length: usize = op.len() as usize;
                                             reference_builder.append(gap_of_length(length));
                                             let read_seq = sequence[current_read_pos..(current_read_pos + length)].iter().map(|c| char::from(*c)).collect::<String>();
                                             read_builder.append(read_seq);
                                             current_read_pos += length;
                                         }
-                                        /// A soft clip (`S`).
-                                        /// A hard clip (`H`).
-                                        /// A deletion from the reference (`D`).
-                                        Kind::Deletion => {//Kind::Deletion => {
-                                            //println!("DEL");
+                                        Kind::Deletion => {
                                             let length: usize = op.len() as usize;
                                             let ref_seq = String::from_utf8(reference_sequence[current_ref_pos..(current_ref_pos + length)].to_vec());
 
@@ -153,17 +143,14 @@ fn main() -> std::io::Result<()> {
                                             current_ref_pos += length;
                                             let read_seq = gap_of_length(length);
                                             read_builder.append(read_seq);
-                                            //current_read_pos += length;
                                         }
-                                        Kind::SoftClip => {//Kind::SoftClip => {
-                                            //println!("SOFT");
+                                        Kind::SoftClip => {
                                             let length: usize = op.len() as usize;
                                             current_read_pos += length;
                                         }
-                                        Kind::HardClip => {//Kind::HardClip => {
-                                            //println!("HARD");
+                                        Kind::HardClip => {
+                                            // these bases are already gone
                                         }
-                                        /// A skipped region from the reference (`N`).
                                         _ => {
                                             panic!("Unsupported {} ", op);
                                         }
@@ -180,9 +167,6 @@ fn main() -> std::io::Result<()> {
                                 writeln!(&mut file, "{}", &reference_builder.string().unwrap());
                                 writeln!(&mut file, ">{}",read.read_name().unwrap());
                                 writeln!(&mut file, "{}", read_builder.string().unwrap());
-                                //println!("ref = {}", reference_builder.string().unwrap());
-                                //println!("read = {}", read_builder.string().unwrap());
-
                             }
                             None => {}
                         };
@@ -190,12 +174,11 @@ fn main() -> std::io::Result<()> {
                 };
             });
         }
-        println!("n = {}", n);
     }
     _ => panic!("We expect a file ending with .sam or .bam as input, we saw: {} ", input_file)
 };
 
-    // we're ok!
+    // we're ok! <-- classic rust
     Ok(())
 }
 
