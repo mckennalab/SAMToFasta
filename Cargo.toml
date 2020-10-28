@@ -1,0 +1,13 @@
+[package]
+name = "samtofasta"
+version = "0.1.0"
+authors = ["aaronmck <aaron.mckenna@dartmouth.edu>"]
+edition = "2018"
+
+[dependencies]
+noodles-bam = { git = "https://github.com/zaeleus/noodles.git" }
+noodles-sam = { git = "https://github.com/zaeleus/noodles.git" }
+noodles-fasta = { git = "https://github.com/zaeleus/noodles.git" }
+string-builder = "0.2.0"
+clap = "~2.32"
+
