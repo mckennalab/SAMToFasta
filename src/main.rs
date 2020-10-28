@@ -3,18 +3,14 @@ extern crate noodles_bam;
 extern crate noodles_sam;
 extern crate noodles_fasta;
 
-use std::str;
-use std::io::prelude::*;
 use std::io::{Write};
 use clap::{Arg, App};
 use std::collections::HashMap;
-use std::{env, fs::File, io::BufReader};
+use std::{fs::File, io::BufReader};
 use noodles_sam as sam;
-use noodles_bam as bam;
 use noodles_fasta as fasta;
 use string_builder::Builder;
 use noodles_sam::record::cigar::op::Kind;
-use noodles_sam::record::cigar::op;
 
 fn main() -> std::io::Result<()> {
     let matches = App::new("SamToFastq")
@@ -84,16 +80,15 @@ fn main() -> std::io::Result<()> {
 
     match input_file {
         _x if _x.ends_with(".bam") || _x.ends_with(".BAM") => {
-            let reader = File::open(_x).map(bam::Reader::new)?;
-            panic!("We expect a file ending with .sam or .bam as input, we saw: {} ", input_file)
+            //let reader = File::open(_x).map(bam::Reader::new)?;
+            panic!("Not supported yet: {} ", input_file)
         }
         _x if _x.ends_with(".sam") || _x.ends_with(".SAM") => {
             let mut reader = File::open(_x).map(BufReader::new).map(sam::Reader::new)?;
             reader.read_header()?;
 
-            let mut n: i32 = 0;
             for result in reader.records() {
-                result.map(|read| {
+                match result.map(|read| {
                     let sequence = read.sequence();
                     let reference_name = read.reference_sequence_name();
                     let cigar = read.cigar();
@@ -163,16 +158,19 @@ fn main() -> std::io::Result<()> {
                                     read_builder.append(gap_of_length(remaining_reference));
                                 }
 
-                                writeln!(&mut file, ">{}", &ref_name.to_string());
-                                writeln!(&mut file, "{}", &reference_builder.string().unwrap());
-                                writeln!(&mut file, ">{}",read.read_name().unwrap());
-                                writeln!(&mut file, "{}", read_builder.string().unwrap());
+                                writeln!(&mut file, ">{}", &ref_name.to_string()).expect("failed to write to file");
+                                writeln!(&mut file, "{}", &reference_builder.string().unwrap()).expect("failed to write to file");
+                                writeln!(&mut file, ">{}",read.read_name().unwrap()).expect("failed to write to file");
+                                writeln!(&mut file, "{}", read_builder.string().unwrap()).expect("failed to write to file");
                             }
                             None => {}
                         };
                     };
                 };
-            });
+            })  {
+                    Ok(_p) => { }
+                    Err(_e) => panic!("Failed on matching"),
+                };
         }
     }
     _ => panic!("We expect a file ending with .sam or .bam as input, we saw: {} ", input_file)
@@ -186,7 +184,7 @@ fn main() -> std::io::Result<()> {
 fn gap_of_length(x: usize) -> String {
     match String::from_utf8((0..x).map(|_| '-' as u8).collect::<Vec<u8>>()) {
         Ok(p) => { p }
-        Err(e) => panic!("Cant make a gap of length {}", x),
+        Err(_e) => panic!("Cant make a gap of length {}", x),
     }
 }
 
